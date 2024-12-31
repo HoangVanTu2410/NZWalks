@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NZWalks.API.Data;
 using NZWalks.API.Models.Domain;
 using NZWalks.API.Models.DTO;
+using NZWalks.API.Repositories;
 
 namespace NZWalks.API.Controllers
 {
@@ -11,16 +12,15 @@ namespace NZWalks.API.Controllers
     [ApiController]
     public class WalksController : ControllerBase
     {
-        private readonly NZWalksDbContext dbContext;
-
-        public WalksController(NZWalksDbContext dbContext)
+        private readonly IWalkRepository walkRepository;
+        public WalksController(IWalkRepository walkRepository)
         {
-            this.dbContext = dbContext;
+            this.walkRepository = walkRepository;
         }
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var walksDomain = await dbContext.Walks.Include("Difficulty").Include("Region").ToListAsync();
+            var walksDomain = await walkRepository.GetAllAsync();
 
             var walksDTO = walksDomain.Select(item => new WalkDTO
             {
@@ -39,7 +39,7 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var walkDomain = await dbContext.Walks.Include("Difficulty").Include("Region").FirstOrDefaultAsync(x => x.Id == id);
+            var walkDomain = await walkRepository.GetByIdAsync(id);
 
             if (walkDomain == null)
             {
@@ -72,8 +72,7 @@ namespace NZWalks.API.Controllers
                 RegionId = addWalkDTO.RegionId
             };
 
-            await dbContext.Walks.AddAsync(walkDomain);
-            await dbContext.SaveChangesAsync();
+            walkDomain = await walkRepository.CreateAsync(walkDomain);
 
             var walkDTO = new WalkDTO
             {
@@ -90,21 +89,22 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateWalkDTO updateWalkDTO)
         {
-            var walkDomain = await dbContext.Walks.Include("Difficulty").Include("Region").FirstOrDefaultAsync(x => x.Id == id);
+            var walkDomain = new Walk
+            {
+                Name = updateWalkDTO.Name,
+                Description = updateWalkDTO.Description,
+                LengthInKm = updateWalkDTO.LengthInKm,
+                WalkImageUrl = updateWalkDTO.WalkImageUrl,
+                DifficultyId = updateWalkDTO.DifficultyId,
+                RegionId = updateWalkDTO.RegionId
+            };
+
+            walkDomain = await walkRepository.UpdateAsync(id, walkDomain);
 
             if (walkDomain == null)
             {
                 return NotFound();
             }
-
-            walkDomain.Name = updateWalkDTO.Name;
-            walkDomain.Description = updateWalkDTO.Description;
-            walkDomain.LengthInKm = updateWalkDTO.LengthInKm;
-            walkDomain.WalkImageUrl = updateWalkDTO.WalkImageUrl;
-            walkDomain.DifficultyId = updateWalkDTO.DifficultyId;
-            walkDomain.RegionId = updateWalkDTO.RegionId;
-
-            await dbContext.SaveChangesAsync();
 
             var walkDTO = new WalkDTO
             {
@@ -123,15 +123,12 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            var walkDomain = await dbContext.Walks.Include("Difficulty").Include("Region").FirstOrDefaultAsync(x => x.Id == id);
+            var walkDomain = await walkRepository.DeleteAsync(id);
 
             if (walkDomain == null)
             {
                 return NotFound();
             }
-
-            dbContext.Walks.Remove(walkDomain);
-            await dbContext.SaveChangesAsync();
 
             var walkDTO = new WalkDTO
             {
