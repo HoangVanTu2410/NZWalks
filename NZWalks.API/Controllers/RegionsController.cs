@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NZWalks.API.Data;
+﻿using Microsoft.AspNetCore.Mvc;
 using NZWalks.API.Models.Domain;
 using NZWalks.API.Models.DTO;
+using NZWalks.API.Repositories;
 
 namespace NZWalks.API.Controllers
 {
@@ -11,15 +9,16 @@ namespace NZWalks.API.Controllers
     [ApiController]
     public class RegionsController : ControllerBase
     {
-        private readonly NZWalksDbContext dbContext;
-        public RegionsController(NZWalksDbContext dbContext) 
+        private readonly IRegionRepository regionRepository;
+
+        public RegionsController(IRegionRepository regionRepository) 
         {
-            this.dbContext = dbContext;
+            this.regionRepository = regionRepository;
         }
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var regionsDomain = await dbContext.Regions.ToListAsync();
+            var regionsDomain = await regionRepository.GetAllAsync();
 
             var regionsDTO = regionsDomain.Select(item => new RegionDTO
             {
@@ -35,7 +34,7 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
-            var regionDomain = await dbContext.Regions.FirstOrDefaultAsync(x => x.Id == id);
+            var regionDomain = await regionRepository.GetByIdAsync(id);
 
             if (regionDomain == null)
             {
@@ -62,8 +61,7 @@ namespace NZWalks.API.Controllers
                 RegionImageUrl = addRegionDTO.RegionImageUrl
             };
 
-            await dbContext.Regions.AddAsync(region);
-            await dbContext.SaveChangesAsync();
+            region = await regionRepository.CreateAsync(region);
 
             var regionDTO = new RegionDTO
             {
@@ -79,17 +77,18 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateRegionDTO updateRegionDTO)
         {
-            var region = await dbContext.Regions.FirstOrDefaultAsync(x => x.Id == id);
+            var region = new Region
+            {
+                Code = updateRegionDTO.Code,
+                Name = updateRegionDTO.Name,
+                RegionImageUrl = updateRegionDTO.RegionImageUrl
+            };
+
+            region = await regionRepository.UpdateAsync(id, region);
 
             if (region == null) {
                 return NotFound();
             }
-
-            region.Code = updateRegionDTO.Code;
-            region.Name = updateRegionDTO.Name;
-            region.RegionImageUrl = updateRegionDTO.RegionImageUrl;
-
-            await dbContext.SaveChangesAsync();
 
             var regionDTO = new RegionDTO
             {
@@ -105,15 +104,12 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
-            var region = await dbContext.Regions.FirstOrDefaultAsync(x => x.Id == id);
+            var region = await regionRepository.DeleteAsync(id);
 
             if (region == null)
             {
                 return NotFound();
             }
-
-            dbContext.Remove(region);
-            await dbContext.SaveChangesAsync();
 
             var regionDTO = new RegionDTO
             {
