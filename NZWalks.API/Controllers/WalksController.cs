@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NZWalks.API.Data;
@@ -13,27 +14,19 @@ namespace NZWalks.API.Controllers
     public class WalksController : ControllerBase
     {
         private readonly IWalkRepository walkRepository;
-        public WalksController(IWalkRepository walkRepository)
+        private readonly IMapper mapper;
+
+        public WalksController(IWalkRepository walkRepository, IMapper mapper)
         {
             this.walkRepository = walkRepository;
+            this.mapper = mapper;
         }
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var walksDomain = await walkRepository.GetAllAsync();
 
-            var walksDTO = walksDomain.Select(item => new WalkDTO
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Description = item.Description,
-                LengthInKm = item.LengthInKm,
-                WalkImageUrl = item.WalkImageUrl,
-                Difficulty = item.Difficulty,
-                Region = item.Region
-            });
-
-            return Ok(walksDTO);
+            return Ok(mapper.Map<List<WalkDTO>>(walksDomain));
         }
         [HttpGet]
         [Route("{id:Guid}")]
@@ -46,42 +39,16 @@ namespace NZWalks.API.Controllers
                 return NotFound();
             }
 
-            var walkDTO = new WalkDTO
-            {
-                Id = walkDomain.Id,
-                Name = walkDomain.Name,
-                Description = walkDomain.Description,
-                LengthInKm = walkDomain.LengthInKm,
-                WalkImageUrl = walkDomain.WalkImageUrl,
-                Difficulty = walkDomain.Difficulty,
-                Region = walkDomain.Region
-            };
-
-            return Ok(walkDTO);
+            return Ok(mapper.Map<WalkDTO>(walkDomain));
         }
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] AddWalkDTO addWalkDTO)
         {
-            var walkDomain = new Walk
-            {
-                Name = addWalkDTO.Name,
-                Description = addWalkDTO.Description,
-                LengthInKm = addWalkDTO.LengthInKm,
-                WalkImageUrl = addWalkDTO.WalkImageUrl,
-                DifficultyId = addWalkDTO.DifficultyId,
-                RegionId = addWalkDTO.RegionId
-            };
+            var walkDomain = mapper.Map<Walk>(addWalkDTO);
 
             walkDomain = await walkRepository.CreateAsync(walkDomain);
 
-            var walkDTO = new WalkDTO
-            {
-                Id = walkDomain.Id,
-                Name = walkDomain.Name,
-                Description = walkDomain.Description,
-                LengthInKm = walkDomain.LengthInKm,
-                WalkImageUrl = walkDomain.WalkImageUrl
-            };
+            var walkDTO = mapper.Map<WalkDTO>(walkDomain);
 
             return CreatedAtAction(nameof(GetById), new { id = walkDTO.Id }, walkDTO);
         }
@@ -89,15 +56,7 @@ namespace NZWalks.API.Controllers
         [Route("{id:Guid}")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateWalkDTO updateWalkDTO)
         {
-            var walkDomain = new Walk
-            {
-                Name = updateWalkDTO.Name,
-                Description = updateWalkDTO.Description,
-                LengthInKm = updateWalkDTO.LengthInKm,
-                WalkImageUrl = updateWalkDTO.WalkImageUrl,
-                DifficultyId = updateWalkDTO.DifficultyId,
-                RegionId = updateWalkDTO.RegionId
-            };
+            var walkDomain = mapper.Map<Walk>(updateWalkDTO);
 
             walkDomain = await walkRepository.UpdateAsync(id, walkDomain);
 
@@ -106,18 +65,7 @@ namespace NZWalks.API.Controllers
                 return NotFound();
             }
 
-            var walkDTO = new WalkDTO
-            {
-                Id = walkDomain.Id,
-                Name = walkDomain.Name,
-                Description = walkDomain.Description,
-                LengthInKm = walkDomain.LengthInKm,
-                WalkImageUrl = walkDomain.WalkImageUrl,
-                Difficulty = walkDomain.Difficulty,
-                Region = walkDomain.Region
-            };
-
-            return Ok(walkDTO);
+            return Ok(mapper.Map<WalkDTO>(walkDomain));
         }
         [HttpDelete]
         [Route("{id:Guid}")]
@@ -130,18 +78,7 @@ namespace NZWalks.API.Controllers
                 return NotFound();
             }
 
-            var walkDTO = new WalkDTO
-            {
-                Id = walkDomain.Id,
-                Name = walkDomain.Name,
-                Description = walkDomain.Description,
-                LengthInKm = walkDomain.LengthInKm,
-                WalkImageUrl = walkDomain.WalkImageUrl,
-                Difficulty = walkDomain.Difficulty,
-                Region = walkDomain.Region
-            };
-
-            return Ok(walkDTO);
+            return Ok(mapper.Map<WalkDTO>(walkDomain));
         }
     }
 }
